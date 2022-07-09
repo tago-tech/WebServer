@@ -3,7 +3,7 @@
 # 以后加东西Makefile不用做多少改动
 MAINSOURCE := Main.cpp
 # MAINOBJS := $(patsubst %.cpp,%.o,$(MAINSOURCE))
-SOURCE  := $(wildcard *.cpp)
+SOURCE  := $(wildcard *.cpp base/*.cpp) 
 override SOURCE := $(filter-out $(MAINSOURCE),$(SOURCE))
 OBJS    := $(patsubst %.cpp,%.o,$(SOURCE))
 
