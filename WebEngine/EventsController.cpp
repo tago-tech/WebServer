@@ -1,4 +1,4 @@
-#include "EventsLoop.h"
+#include "EventsController.h"
 
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
@@ -22,7 +22,7 @@ int createEventfd() {
   return evtfd;
 }
 
-EventsLoop::EventsLoop()
+EventsController::EventsController()
     : looping_(false),
       epoller_(new Epoll()),
       wakeupFd_(createEventfd()),
@@ -30,18 +30,18 @@ EventsLoop::EventsLoop()
       callingPendingFunctors_(false),
       pwakeupChannel_(new SocketChannel(wakeupFd_)) {
   pwakeupChannel_->setEvents(EPOLLIN | EPOLLET);
-  pwakeupChannel_->setReadHandler(bind(&EventsLoop::handleRead, this));
-  pwakeupChannel_->setConnHandler(bind(&EventsLoop::handleConn, this));
+  pwakeupChannel_->setReadHandler(bind(&EventsController::handleRead, this));
+  pwakeupChannel_->setConnHandler(bind(&EventsController::handleConn, this));
   epoller_->epoll_add(
       std::make_shared<HttpRequestContext>(this, wakeupFd_, pwakeupChannel_),
       0);
 }
 
-EventsLoop::~EventsLoop() { close(wakeupFd_); }
+EventsController::~EventsController() { close(wakeupFd_); }
 
-void EventsLoop::handleConn() { updatePoller(pwakeupChannel_, 0); }
+void EventsController::handleConn() { updatePoller(pwakeupChannel_, 0); }
 
-void EventsLoop::handleRead() {
+void EventsController::handleRead() {
   uint64_t one = 1;
   ssize_t n = readn(wakeupFd_, &one, sizeof one);
   if (n != sizeof one) {
@@ -51,7 +51,7 @@ void EventsLoop::handleRead() {
   pwakeupChannel_->setEvents(EPOLLIN | EPOLLET);
 }
 
-void EventsLoop::wakeup() {
+void EventsController::wakeup() {
   uint64_t one = 1;
   ssize_t n = writen(wakeupFd_, (char*)(&one), sizeof one);
   if (n != sizeof one) {
@@ -60,7 +60,7 @@ void EventsLoop::wakeup() {
   }
 }
 
-void EventsLoop::queueInLoop(std::function<void()>&& cb) {
+void EventsController::queueInLoop(std::function<void()>&& cb) {
   {
     MutexLockGuard lock(mutex_);
     pendingFunctors_.emplace_back(std::move(cb));
@@ -68,7 +68,7 @@ void EventsLoop::queueInLoop(std::function<void()>&& cb) {
   wakeup();
 }
 
-void EventsLoop::process() {
+void EventsController::process() {
   assert(!looping_);
   looping_ = true;
   quit_ = false;
@@ -86,7 +86,7 @@ void EventsLoop::process() {
   looping_ = false;
 }
 
-void EventsLoop::doPendingFunctors() {
+void EventsController::doPendingFunctors() {
   std::vector<std::function<void()>> functors;
   callingPendingFunctors_ = true;
   {

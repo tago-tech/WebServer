@@ -2,8 +2,8 @@ set(SRCS
     SocketChannel.cpp
     HttpRequestContext.cpp
     Epoll.cpp
-    EventsLoop.cpp
-    EventsLoopProcessor.cpp
+    EventsController.cpp
+    EventsProcessor.cpp
     Engine.cpp
     Util.cpp
     Main.cpp

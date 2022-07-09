@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "EventsLoop.h"
-#include "EventsLoopProcessor.h"
+#include "EventsController.h"
+#include "EventsProcessor.h"
 #include "base/Thread.h"
 
 class Engine {
@@ -18,12 +18,12 @@ class Engine {
   void Stop();
 
  private:
-  std::shared_ptr<EventsLoopProcessor> SelectOneEventsProcessors();
+  std::shared_ptr<EventsProcessor> SelectOneEventsProcessors();
 
  private:
   int port_;
   int thread_num_;
   int listenFd_;
   int processor_index_;
-  std::vector<std::shared_ptr<EventsLoopProcessor>> events_processores_;
+  std::vector<std::shared_ptr<EventsProcessor>> events_processores_;
 };

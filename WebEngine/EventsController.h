@@ -10,10 +10,10 @@
 #include "base/MutexLock.h"
 using namespace std;
 
-class EventsLoop : enable_shared_from_this<EventsLoop> {
+class EventsController : enable_shared_from_this<EventsController> {
  public:
-  EventsLoop();
-  ~EventsLoop();
+  EventsController();
+  ~EventsController();
   void process();
   void quit();
   void queueInLoop(std::function<void()>&& cb);

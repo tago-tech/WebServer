@@ -11,7 +11,7 @@
 #include "SocketChannel.h"
 
 
-class EventsLoop;
+class EventsController;
 
 enum ProcessState {
   STATE_PARSE_URI = 1,
@@ -70,12 +70,12 @@ class MimeType {
 
 class HttpRequestContext : std::enable_shared_from_this<HttpRequestContext>{
  public:
-  HttpRequestContext(EventsLoop* loop, int connfd, std::shared_ptr<SocketChannel> channel);
+  HttpRequestContext(EventsController* loop, int connfd, std::shared_ptr<SocketChannel> channel);
   ~HttpRequestContext() { close(fd_); }
   void reset();
 
   std::shared_ptr<SocketChannel> getChannel() { return channel_; }
-  EventsLoop* getLoop() { return loop_; }
+  EventsController* getEventsController() { return events_controller_; }
   void handleClose();
   void newEvent();
 
@@ -84,7 +84,7 @@ class HttpRequestContext : std::enable_shared_from_this<HttpRequestContext>{
   void handleConn();
 
  private:
-  EventsLoop* loop_;
+  EventsController* events_controller_;
   std::shared_ptr<SocketChannel> channel_;
   int fd_;
   std::string inBuffer_;

@@ -12,7 +12,7 @@
 #include <ostream>
 #include <string>
 
-#include "EventsLoop.h"
+#include "EventsController.h"
 #include "SocketChannel.h"
 #include "Util.h"
 
@@ -22,7 +22,7 @@ Engine::Engine(int port, int thread_num)
   handle_for_sigpipe();
   listenFd_ = socket_bind_listen(port_);
   for (int i = 0; i < thread_num_; i++) {
-    events_processores_.emplace_back(std::make_shared<EventsLoopProcessor>());
+    events_processores_.emplace_back(std::make_shared<EventsProcessor>());
   }
 }
 
@@ -44,7 +44,7 @@ void Engine::Start() {
     std::cout << "Accept connection from " << inet_ntoa(client_addr.sin_addr)
               << ":" << ntohs(client_addr.sin_port) << std::endl;
     auto processor = SelectOneEventsProcessors();
-    auto events_loop = processor->getEventsLoop();
+    auto events_controller = processor->getEventsController();
     //设为非阻塞模式
     if (setSocketNonBlocking(accept_fd) < 0) {
       std::cout << "Set non block failed, exit engine!";
@@ -53,15 +53,17 @@ void Engine::Start() {
     setSocketNodelay(accept_fd);
     auto socket_channel = std::make_shared<SocketChannel>(accept_fd);
     socket_channel->setEvents(EPOLLIN | EPOLLET);
-    events_loop->queueInLoop([events_loop, socket_channel]() -> void {
-      events_loop->addToPoller(socket_channel);
-    });
+    events_controller->queueInLoop(
+        [events_controller, socket_channel]() -> void {
+          events_controller->addToPoller(socket_channel);
+        });
   }
+  std::cout << "accept failed, exit engine.";
 }
 
 void Engine::Stop() {}
 
-std::shared_ptr<EventsLoopProcessor> Engine::SelectOneEventsProcessors() {
+std::shared_ptr<EventsProcessor> Engine::SelectOneEventsProcessors() {
   auto processor = events_processores_.at(processor_index_ % thread_num_);
   processor_index_ += 1;
   return processor;

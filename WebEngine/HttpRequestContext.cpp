@@ -11,7 +11,7 @@
 #include <memory>
 #include <type_traits>
 
-#include "EventsLoop.h"
+#include "EventsController.h"
 #include "SocketChannel.h"
 #include "Util.h"
 
@@ -113,9 +113,9 @@ std::string MimeType::getMime(const std::string &suffix) {
     return mime[suffix];
 }
 
-HttpRequestContext::HttpRequestContext(EventsLoop *loop, int connfd,
+HttpRequestContext::HttpRequestContext(EventsController *events_controller, int connfd,
                                        std::shared_ptr<SocketChannel> channel)
-    : loop_(loop),
+    : events_controller_(events_controller),
       channel_(channel),
       fd_(connfd),
       error_(false),
@@ -263,15 +263,15 @@ void HttpRequestContext::handleConn() {
       }
       // events_ |= (EPOLLET | EPOLLONESHOT);
       events_ |= EPOLLET;
-      loop_->updatePoller(channel_, timeout);
+      events_controller_->updatePoller(channel_, timeout);
     } else if (keepAlive_) {
       events_ |= (EPOLLIN | EPOLLET);
       // events_ |= (EPOLLIN | EPOLLET | EPOLLONESHOT);
       int timeout = DEFAULT_KEEP_ALIVE_TIME;
-      loop_->updatePoller(channel_, timeout);
+      events_controller_->updatePoller(channel_, timeout);
     } else {
       cout << "close normally" << endl;
-      loop_->shutdown(channel_);
+      events_controller_->shutdown(channel_);
       handleClose();
     }
   } else if (!error_ && connectionState_ == H_DISCONNECTING &&
@@ -560,10 +560,10 @@ void HttpRequestContext::handleError(int fd, int err_num, string short_msg) {
 
 void HttpRequestContext::handleClose() {
   connectionState_ = H_DISCONNECTED;
-  loop_->removeFromPoller(channel_);
+  events_controller_->removeFromPoller(channel_);
 }
 
 void HttpRequestContext::newEvent() {
   channel_->setEvents(DEFAULT_EVENT);
-  loop_->addToPoller(channel_, DEFAULT_EXPIRED_TIME);
+  events_controller_->addToPoller(channel_, DEFAULT_EXPIRED_TIME);
 }
