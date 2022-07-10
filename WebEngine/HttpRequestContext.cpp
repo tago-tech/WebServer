@@ -125,7 +125,9 @@ HttpRequestContext::HttpRequestContext(EventsController *events_controller, int 
       nowReadPos_(0),
       state_(STATE_PARSE_URI),
       hState_(H_START),
-      keepAlive_(false) {}
+      keepAlive_(false) {
+        // 看这里keepAlive_默认是关的，我不打算支持，原项目里是支持的
+      }
 
 void HttpRequestContext::reset() {
   // inBuffer_.clear();
@@ -138,9 +140,12 @@ void HttpRequestContext::reset() {
 }
 
 // 某个已建立连接的channel上触发了可读事件，即client向server发起了请求
+// 这是核心的http的请求流程，当client链接后，服务端处理读事件的方法
 void HttpRequestContext::handleRead() {
+  // 获取发生了哪些事件
   __uint32_t &events_ = channel_->getEvents();
   do {
+    // 从socket channel上读数据到我们自己的缓冲区inBuffer_
     bool zero = false;
     int read_num = readn(fd_, inBuffer_, zero);
     // std::cout << "Request: " << inBuffer_;
@@ -166,6 +171,8 @@ void HttpRequestContext::handleRead() {
       }
       // cout << "readnum == 0" << endl;
     }
+    // 接下来进入http的请求流程，
+    // 依次 分析URI、分析header部分、分析http方法类型、分析body（仅post方法,get方法到数据放在了uri里，post在body里）
 
     if (state_ == STATE_PARSE_URI) {
       URIState flag = this->parseURI();
@@ -223,6 +230,7 @@ void HttpRequestContext::handleRead() {
     }
   } while (false);
   // cout << "state_=" << state_ << endl;
+  // 分析完之后，没有错误发生就把 响应结果 写回
   if (!error_) {
     if (outBuffer_.size() > 0) {
       handleWrite();
@@ -239,18 +247,22 @@ void HttpRequestContext::handleRead() {
   }
 }
 void HttpRequestContext::Logit() {}
+
 void HttpRequestContext::handleWrite() {
   if (!error_ && connectionState_ != H_DISCONNECTED) {
     __uint32_t &events_ = channel_->getEvents();
+    // 直接写到操作系统的socket文件描述符的out_buffer中
     if (writen(fd_, outBuffer_) < 0) {
       std::cout << "written error" << std::endl;
       events_ = 0;
       error_ = true;
     }
+    // 如果一次没写完，就标志下有可写事件，下次socket channel的handleEvents方法还会调用该方法，继续写，直到打完收场。
     if (outBuffer_.size() > 0) events_ |= EPOLLOUT;
   }
 }
 
+// 没啥用，不用看
 void HttpRequestContext::handleConn() {
   __uint32_t &events_ = channel_->getEvents();
   if (!error_ && connectionState_ == H_CONNECTED) {
@@ -283,6 +295,7 @@ void HttpRequestContext::handleConn() {
   }
 }
 
+// 怎么样分析uri
 URIState HttpRequestContext::parseURI() {
   string &str = inBuffer_;
   string cop = str;
@@ -358,6 +371,7 @@ URIState HttpRequestContext::parseURI() {
   return PARSE_URI_SUCCESS;
 }
 
+// 怎么样解析http header
 HeaderState HttpRequestContext::parseHeaders() {
   string &str = inBuffer_;
   int key_start = -1, key_end = -1, value_start = -1, value_end = -1;
@@ -446,6 +460,7 @@ HeaderState HttpRequestContext::parseHeaders() {
   return PARSE_HEADER_AGAIN;
 }
 
+// 解析完各部分数据了，该考虑怎样响应给客户端了
 AnalysisState HttpRequestContext::analysisRequest() {
   if (method_ == METHOD_POST) {
     string header;
@@ -558,6 +573,7 @@ void HttpRequestContext::handleError(int fd, int err_num, string short_msg) {
   writen(fd, send_buff, strlen(send_buff));
 }
 
+// 当关闭时，直接调用事件处理器关了就行
 void HttpRequestContext::handleClose() {
   connectionState_ = H_DISCONNECTED;
   events_controller_->removeFromPoller(channel_);
