@@ -40,6 +40,9 @@ int timeout) {
         std::cout << "epoll_ctl add fd" << fd << " error" << std::endl;
         fd2http_[fd].reset();
   }
+
+
+  
 }
 
 void Epoll::epoll_mod(std::shared_ptr<SocketChannel> socket_channel,
