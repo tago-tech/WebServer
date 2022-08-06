@@ -40,7 +40,7 @@ class EventsController : enable_shared_from_this<EventsController> {
         [request_context]() -> void { request_context->handleRead(); });
     channel->setWriteHandler(
         [request_context]() -> void { request_context->handleWrite(); });
-    epoller_->epoll_add(request_context,timeout);
+    epoller_->epoll_add(request_context, timeout);
   }
 
  private:
